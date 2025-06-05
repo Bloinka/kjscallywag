@@ -36,7 +36,7 @@ function App() {
   // Enable/disable pagination - controls whether results are shown in pages (true) or all at once (false)
   // When set to false, all pagination UI and functionality is disabled
   // This can be toggled by the user through a button in the interface
-  const [enablePagination, setEnablePagination] = useState(false)
+  const [enablePagination] = useState(false)
 
   const [songs, setSongs] = useState<Array<Song>>([])
   const [filteredSongs, setFilteredSongs] = useState<Array<Song>>([])
