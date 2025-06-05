@@ -72,6 +72,21 @@ function Launch() {
       : ''
   const isIOSDevice = /(iphone|ipod|ipad)/i.test(userAgent)
 
+  // Add a special meta tag approach for iOS to force out of in-app browsers
+  useEffect(() => {
+    if (isIOSDevice) {
+      // Create a meta tag to attempt forcing Safari to open
+      const metaTag = document.createElement('meta')
+      metaTag.name = 'apple-itunes-app'
+      metaTag.content =
+        'app-id=305343404, app-argument=https://kjscallywag.netlify.app'
+      document.head.appendChild(metaTag)
+
+      // Log user agent for debugging
+      console.log('iOS device detected with user agent:', userAgent)
+    }
+  }, [isIOSDevice, userAgent])
+
   useEffect(() => {
     // Only redirect non-iOS devices that aren't in in-app browsers
     const checkBrowser = () => {
@@ -97,31 +112,32 @@ function Launch() {
     checkBrowser()
   }, [navigate, isIOSDevice, userAgent])
 
-  // Create launch function that will open in device's default browser
+  // Enhanced function to try multiple methods to open in default browser
   const launchInDefaultBrowser = () => {
-    // Use already declared userAgent and isIOSDevice from the component scope
+    // The absolute URL we want to open (not the current URL which may be the in-app version)
+    const targetUrl = 'https://kjscallywag.netlify.app'
 
     if (isIOSDevice) {
-      // For iOS, try to use the special URL scheme that forces Safari to open
-      // This approach works better with iOS QR scanner and other in-app browsers
-      const targetUrl = encodeURIComponent(currentUrl)
-      const safariUrl = `x-web-search://?${targetUrl}`
+      // For iOS, we need to try multiple approaches
 
+      // 1. Try location.replace - more forceful than location.href
       try {
-        // First attempt with the x-web-search protocol
-        window.location.href = safariUrl
-
-        // Set a fallback in case the special scheme doesn't work
-        setTimeout(() => {
-          //      window.location.href = currentUrl
-        }, 500)
+        window.location.replace(targetUrl)
       } catch (e) {
-        // Fallback to standard approach
-        //   window.location.href = currentUrl
+        console.error('Method 1 failed:', e)
       }
+
+      // 2. Backup open approach
+      setTimeout(() => {
+        try {
+          window.open(targetUrl, '_system')
+        } catch (e) {
+          console.error('Method 2 failed:', e)
+        }
+      }, 100)
     } else {
-      // Standard approach for other platforms
-      // window.location.href = currentUrl
+      // For non-iOS, simpler approach
+      window.location.href = targetUrl
     }
   }
 
@@ -130,33 +146,74 @@ function Launch() {
     <div className="text-center">
       <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
         {isIOSDevice ? (
-          <h2 className="text-2xl mb-4">
-            Continue in Safari for the best experience
-          </h2>
+          <>
+            <h2 className="text-2xl mb-4">iOS In-App Browser Detected</h2>
+            <p className="mb-4">
+              For the best experience, please open this site in Safari. We've
+              provided multiple methods below - try each one until you find one
+              that works.
+            </p>
+            <p className="mb-8 text-sm text-yellow-300">
+              <strong>Tip:</strong> If you're using the iOS QR Code scanner, try
+              holding your finger on the QR code until a menu appears, then
+              choose "Open in Safari" directly.
+            </p>
+          </>
         ) : (
-          <h2 className="text-2xl mb-4">You're using an in-app browser</h2>
+          <>
+            <h2 className="text-2xl mb-4">You're using an in-app browser</h2>
+            <p className="mb-8">
+              For the best experience, we recommend using your device's default
+              browser
+            </p>
+          </>
         )}
 
-        <p className="mb-8">
-          For the best experience, we recommend using your device's default
-          browser
-        </p>
+        {isIOSDevice ? (
+          <>
+            {/* For iOS, we offer multiple buttons with different approaches */}
+            <button
+              onClick={() =>
+                window.open('https://kjscallywag.netlify.app', '_blank')
+              }
+              className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
+            >
+              Method 1: Open in Browser
+            </button>
 
-        <button
-          onClick={() =>
-            window.open('https://kjscallywag.netlify.app', '_blank')
-          }
-          className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
-        >
-          Open in Browser
-        </button>
+            <button
+              onClick={() =>
+                window.open('https://kjscallywag.netlify.app', '_system')
+              }
+              className="px-6 py-3 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
+            >
+              Method 2: Open in Safari
+            </button>
 
-        <button
-          onClick={launchInDefaultBrowser}
-          className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
-        >
-          {isIOSDevice ? 'Open in Safari' : 'Launch in Default Browser'}
-        </button>
+            <button
+              onClick={launchInDefaultBrowser}
+              className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition mb-4"
+            >
+              Method 3: Force Safari Open
+            </button>
+
+            <a
+              href="https://kjscallywag.netlify.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition inline-block"
+            >
+              Method 4: Try Direct Link
+            </a>
+          </>
+        ) : (
+          <button
+            onClick={launchInDefaultBrowser}
+            className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
+          >
+            Launch in Default Browser
+          </button>
+        )}
       </header>
     </div>
   )
