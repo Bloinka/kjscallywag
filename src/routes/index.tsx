@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import logo from '../logo.svg'
 
 // Define the Song type
 type Song = {
@@ -19,7 +18,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'artist' | 'title'>('title')
+  const [sortBy] = useState<'artist' | 'title'>('title')
 
   const resultsPerPage = 100
 
@@ -99,10 +98,10 @@ function App() {
   }
 
   // Handle sort change
-  const handleSortChange = (newSortBy: 'artist' | 'title') => {
-    setSortBy(newSortBy)
-    setFilteredSongs(sortSongs(filteredSongs))
-  }
+  // const handleSortChange = (newSortBy: 'artist' | 'title') => {
+  //   setSortBy(newSortBy)
+  //   setFilteredSongs(sortSongs(filteredSongs))
+  // }
 
   return (
     <div className="text-center">
