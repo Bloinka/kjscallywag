@@ -20,10 +20,24 @@ const isInAppBrowser = () => {
   const isInTwitterApp =
     userAgent.includes('twitter') || userAgent.includes('x-twitter')
 
-  // iOS in-app browser detection
-  const isIOSWebView = /(iphone|ipod|ipad).*applewebkit(?!.*safari)/i.test(
-    userAgent,
-  )
+  // iOS in-app browser and QR scanner detection
+  const isIOSDevice = /(iphone|ipod|ipad)/i.test(userAgent)
+  const isIOSSafari =
+    isIOSDevice &&
+    /safari/i.test(userAgent) &&
+    !userAgent.includes('crios') &&
+    !userAgent.includes('fxios')
+  const isIOSWebView =
+    isIOSDevice && /applewebkit/i.test(userAgent) && !isIOSSafari
+
+  // iOS QR scanner often opens in a special Safari view
+  const isIOSQRScanner =
+    isIOSDevice &&
+    (/crios|firefox|edgios|opera|instagram|snapchat/i.test(userAgent) ||
+      // Check for other iOS browsers that might be used by the QR scanner
+      (userAgent.includes('safari') &&
+        !userAgent.includes('chrome') &&
+        !userAgent.includes('version')))
 
   // Android in-app browser detection
   const isAndroidWebView = userAgent.includes('wv')
@@ -37,6 +51,7 @@ const isInAppBrowser = () => {
     isInWhatsAppApp ||
     isInTwitterApp ||
     isIOSWebView ||
+    isIOSQRScanner ||
     isAndroidWebView
   )
 }
@@ -63,8 +78,31 @@ function Launch() {
 
   // Create launch function that will open in device's default browser
   const launchInDefaultBrowser = () => {
-    // For iOS and many platforms, this will work to launch in default browser
-    window.location.href = currentUrl
+    const userAgent = window.navigator.userAgent.toLowerCase()
+    const isIOSDevice = /(iphone|ipod|ipad)/i.test(userAgent)
+
+    if (isIOSDevice) {
+      // For iOS, try to use the special URL scheme that forces Safari to open
+      // This approach works better with iOS QR scanner and other in-app browsers
+      const targetUrl = encodeURIComponent(currentUrl)
+      const safariUrl = `x-web-search://?${targetUrl}`
+
+      try {
+        // First attempt with the x-web-search protocol
+        window.location.href = safariUrl
+
+        // Set a fallback in case the special scheme doesn't work
+        setTimeout(() => {
+          window.location.href = currentUrl
+        }, 500)
+      } catch (e) {
+        // Fallback to standard approach
+        window.location.href = currentUrl
+      }
+    } else {
+      // Standard approach for other platforms
+      window.location.href = currentUrl
+    }
   }
 
   // Only render content if in an in-app browser
