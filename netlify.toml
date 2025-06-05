@@ -1,0 +1,11 @@
+[build]
+  # The directory to publish (relative to root of your repo)
+  publish = "dist"
+  # The build command to run
+  command = "npm run build"
+
+# Handle SPA fallback for all routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
