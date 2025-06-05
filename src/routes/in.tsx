@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export const Route = createFileRoute('/in')({
   component: Launch,
@@ -60,6 +60,17 @@ const isInAppBrowser = () => {
 
 function Launch() {
   const navigate = useNavigate()
+  const [canSave] = useState(() => {
+    try {
+      localStorage.setItem('test', 'value')
+      localStorage.getItem('test') // Retrieve to verify it's saved
+      localStorage.removeItem('test') // Clean up after testing
+      return true
+    } catch (e) {
+      console.error('LocalStorage not available:', e)
+      return false
+    }
+  })
 
   // Get current URL to create launch link
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -120,13 +131,6 @@ function Launch() {
     if (isIOSDevice) {
       // For iOS, we need to try multiple approaches
 
-      // 1. Try location.replace - more forceful than location.href
-      try {
-        window.location.replace(targetUrl)
-      } catch (e) {
-        console.error('Method 1 failed:', e)
-      }
-
       // 2. Backup open approach
       setTimeout(() => {
         try {
@@ -171,7 +175,7 @@ function Launch() {
 
         {isIOSDevice ? (
           <>
-            <div>{JSON.stringify(window.navigator.userAgent)}</div>
+            <div>{JSON.stringify(canSave)}greg</div>
             {/* For iOS, we offer multiple buttons with different approaches */}
             <button
               onClick={() =>
@@ -181,7 +185,6 @@ function Launch() {
             >
               Method 1: Open in Browser
             </button>
-
             <button
               onClick={() =>
                 window.open('https://kjscallywag.netlify.app', '_system')
@@ -190,14 +193,12 @@ function Launch() {
             >
               Method 2: Open in Safari
             </button>
-
             <button
               onClick={launchInDefaultBrowser}
               className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition mb-4"
             >
               Method 3: Force Safari Open
             </button>
-
             <a
               href="https://kjscallywag.netlify.app"
               target="_blank"
@@ -208,12 +209,15 @@ function Launch() {
             </a>
           </>
         ) : (
-          <button
-            onClick={launchInDefaultBrowser}
-            className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
-          >
-            Launch in Default Browser
-          </button>
+          <>
+            <div>{JSON.stringify(canSave)}greg</div>
+            <button
+              onClick={launchInDefaultBrowser}
+              className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
+            >
+              Launch in Default Browser
+            </button>
+          </>
         )}
       </header>
     </div>
