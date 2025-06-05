@@ -54,7 +54,7 @@ function Launch() {
 
       // Redirect to root if not in an in-app browser
       if (!inAppBrowserDetected) {
-        //     navigate({ to: '/' })
+        navigate({ to: '/' })
       }
     }
 
