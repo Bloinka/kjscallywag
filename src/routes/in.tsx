@@ -63,6 +63,7 @@ function Launch() {
 
   // Get current URL to create launch link
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
+  console.log('Current URL:', currentUrl)
 
   // Detect iOS device once
   const userAgent =
@@ -89,7 +90,7 @@ function Launch() {
 
       // Only redirect non-iOS devices that aren't in in-app browsers
       if (!inAppBrowserDetected) {
-        navigate({ to: '/' })
+        //   navigate({ to: '/' })
       }
     }
 
@@ -112,15 +113,15 @@ function Launch() {
 
         // Set a fallback in case the special scheme doesn't work
         setTimeout(() => {
-          window.location.href = currentUrl
+          //      window.location.href = currentUrl
         }, 500)
       } catch (e) {
         // Fallback to standard approach
-        window.location.href = currentUrl
+        //   window.location.href = currentUrl
       }
     } else {
       // Standard approach for other platforms
-      window.location.href = currentUrl
+      // window.location.href = currentUrl
     }
   }
 
@@ -140,6 +141,15 @@ function Launch() {
           For the best experience, we recommend using your device's default
           browser
         </p>
+
+        <button
+          onClick={() =>
+            window.open('https://kjscallywag.netlify.app', '_blank')
+          }
+          className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
+        >
+          Open in Browser
+        </button>
 
         <button
           onClick={launchInDefaultBrowser}
