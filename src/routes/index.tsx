@@ -64,11 +64,17 @@ function App() {
         const parsedFavorites = JSON.parse(savedFavorites)
         console.log('Parsed favorites:', parsedFavorites)
         setFavorites(parsedFavorites)
+
+        // If we're showing only favorites, update filtered results immediately
+        if (showOnlyFavorites && songs.length > 0) {
+          const filtered = songs.filter((song) => parsedFavorites[song.id])
+          setFilteredSongs(sortSongs(filtered))
+        }
       }
     } catch (err) {
       console.error('Failed to load favorites from localStorage:', err)
     }
-  }, [localStorageAvailable])
+  }, [localStorageAvailable, songs.length, showOnlyFavorites])
 
   // Save favorites to localStorage whenever they change
   useEffect(() => {
@@ -162,27 +168,31 @@ function App() {
     // Reset to first page when search query changes
     setCurrentPage(1)
 
-    // If empty query or less than 3 characters, and not showing favorites only, don't show any results
-    if ((!value.trim() || value.trim().length < 3) && !showOnlyFavorites) {
-      setFilteredSongs([])
-      return
-    }
-
     let filtered = [...songs]
 
-    // Apply text search filter if query is long enough
-    if (value.trim() && value.trim().length >= 3) {
+    // If we have favorites and no query, or query less than 3 characters
+    if (!value.trim() || value.trim().length < 3) {
+      if (showOnlyFavorites) {
+        // Only show favorites
+        filtered = filtered.filter((song) => favorites[song.id])
+      } else {
+        // Empty search, no filters - don't show anything
+        setFilteredSongs([])
+        return
+      }
+    } else {
+      // Apply text search filter if query is long enough
       const lowercaseQuery = value.toLowerCase()
       filtered = filtered.filter(
         (song) =>
           song.title.toLowerCase().includes(lowercaseQuery) ||
           song.artist.toLowerCase().includes(lowercaseQuery),
       )
-    }
 
-    // Apply favorites filter if enabled
-    if (showOnlyFavorites) {
-      filtered = filtered.filter((song) => favorites[song.id])
+      // Apply favorites filter if enabled
+      if (showOnlyFavorites) {
+        filtered = filtered.filter((song) => favorites[song.id])
+      }
     }
 
     setFilteredSongs(sortSongs(filtered))
@@ -190,11 +200,20 @@ function App() {
 
   // Toggle favorites filter
   const toggleFavoritesFilter = () => {
-    setShowOnlyFavorites(!showOnlyFavorites)
+    // Toggle the state and trigger search filter
+    const newShowOnlyFavorites = !showOnlyFavorites
+    setShowOnlyFavorites(newShowOnlyFavorites)
     setCurrentPage(1) // Reset to first page
 
-    // Re-apply the search with the new favorites setting
-    handleSearch(query)
+    // If we're switching to show favorites and have no query text,
+    // we need to make sure favorites are displayed regardless of search text
+    if (newShowOnlyFavorites) {
+      const filtered = [...songs].filter((song) => favorites[song.id])
+      setFilteredSongs(sortSongs(filtered))
+    } else {
+      // Otherwise re-apply the search with the new favorites setting
+      handleSearch(query)
+    }
   }
 
   // Handle sort change
@@ -357,7 +376,8 @@ function App() {
 
               {/* Results Table */}
               <div className="mt-8 overflow-x-auto bg-white text-black rounded-lg shadow">
-                {query.trim().length < 3 && !showOnlyFavorites ? (
+                {(query.trim().length < 3 && !showOnlyFavorites) ||
+                filteredSongs.length === 0 ? (
                   <div className="p-8 text-center text-gray-700">
                     <p className="mb-4">
                       For best results search portions of a song or artist, not
@@ -367,6 +387,12 @@ function App() {
                       Example, if looking for "Tennessee Whiskey", try
                       "Tennessee" or "Whiskey".
                     </p>
+                    {showOnlyFavorites && filteredSongs.length === 0 && (
+                      <p className="mt-4 font-semibold">
+                        No favorite songs yet. Click the star icon next to a
+                        song to add it to favorites.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <table
@@ -475,70 +501,68 @@ function App() {
                   </table>
                 )}
 
-                {/* Pagination Controls - Only show when we have search results */}
-                {(query.trim().length >= 3 || showOnlyFavorites) &&
-                  filteredSongs.length > 0 && (
-                    <div className="px-6 py-3 bg-gray-100 flex items-center justify-between">
-                      <div className="text-sm text-gray-500">
-                        Showing{' '}
-                        {Math.min(
-                          resultsPerPage,
-                          filteredSongs.length -
-                            (currentPage - 1) * resultsPerPage,
-                        )}{' '}
-                        of {filteredSongs.length} results
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) => Math.max(prev - 1, 1))
-                          }
-                          disabled={currentPage === 1}
-                          className={`px-3 py-1 rounded ${
-                            currentPage === 1
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
-                          }`}
-                        >
-                          Previous
-                        </button>
-
-                        <span className="px-3 py-1 text-sm">
-                          Page {currentPage} of{' '}
-                          {Math.max(
-                            1,
-                            Math.ceil(filteredSongs.length / resultsPerPage),
-                          )}
-                        </span>
-
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) =>
-                              Math.min(
-                                prev + 1,
-                                Math.ceil(
-                                  filteredSongs.length / resultsPerPage,
-                                ),
-                              ),
-                            )
-                          }
-                          disabled={
-                            currentPage >=
-                            Math.ceil(filteredSongs.length / resultsPerPage)
-                          }
-                          className={`px-3 py-1 rounded ${
-                            currentPage >=
-                            Math.ceil(filteredSongs.length / resultsPerPage)
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
-                          }`}
-                        >
-                          Next
-                        </button>
-                      </div>
+                {/* Pagination Controls - Only show when we have search results or showing favorites */}
+                {filteredSongs.length > 0 && (
+                  <div className="px-6 py-3 bg-gray-100 flex items-center justify-between">
+                    <div className="text-sm text-gray-500">
+                      Showing{' '}
+                      {Math.min(
+                        resultsPerPage,
+                        filteredSongs.length -
+                          (currentPage - 1) * resultsPerPage,
+                      )}{' '}
+                      of {filteredSongs.length}{' '}
+                      {showOnlyFavorites ? 'favorite' : ''} results
                     </div>
-                  )}
+
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className={`px-3 py-1 rounded ${
+                          currentPage === 1
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
+                        }`}
+                      >
+                        Previous
+                      </button>
+
+                      <span className="px-3 py-1 text-sm">
+                        Page {currentPage} of{' '}
+                        {Math.max(
+                          1,
+                          Math.ceil(filteredSongs.length / resultsPerPage),
+                        )}
+                      </span>
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(
+                              prev + 1,
+                              Math.ceil(filteredSongs.length / resultsPerPage),
+                            ),
+                          )
+                        }
+                        disabled={
+                          currentPage >=
+                          Math.ceil(filteredSongs.length / resultsPerPage)
+                        }
+                        className={`px-3 py-1 rounded ${
+                          currentPage >=
+                          Math.ceil(filteredSongs.length / resultsPerPage)
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Song Detail Modal */}
