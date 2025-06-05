@@ -171,6 +171,7 @@ function Launch() {
 
         {isIOSDevice ? (
           <>
+            <div>{JSON.stringify(window.navigator.userAgent)}</div>
             {/* For iOS, we offer multiple buttons with different approaches */}
             <button
               onClick={() =>
