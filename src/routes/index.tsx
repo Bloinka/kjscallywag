@@ -210,6 +210,7 @@ function App() {
     if (newShowOnlyFavorites) {
       const filtered = [...songs].filter((song) => favorites[song.id])
       setFilteredSongs(sortSongs(filtered))
+      handleSearch('') // Clear search to show all favorites
     } else {
       // Otherwise re-apply the search with the new favorites setting
       handleSearch(query)
@@ -234,48 +235,75 @@ function App() {
 
   // Toggle favorite status for a song
   const toggleFavorite = (songId: string) => {
-    setFavorites((prev) => {
-      const newFavorites = { ...prev }
+    // First get current favorites state
+    const isFavorited = !!favorites[songId]
 
-      if (newFavorites[songId]) {
-        // Remove favorite
-        delete newFavorites[songId]
-      } else {
-        // Add favorite
-        newFavorites[songId] = true
+    // Create a new favorites object with the toggled state
+    const newFavorites = { ...favorites }
+
+    if (isFavorited) {
+      // Remove favorite if it exists
+      delete newFavorites[songId]
+    } else {
+      // Add favorite if it doesn't exist
+      newFavorites[songId] = true
+    }
+
+    // Save new favorites to state
+    setFavorites(newFavorites)
+
+    // Immediately save to localStorage to ensure it persists
+    if (localStorageAvailable) {
+      try {
+        localStorage.setItem('karaokeFavorites', JSON.stringify(newFavorites))
+        console.log('Immediately saved favorites:', newFavorites)
+      } catch (err) {
+        console.error('Failed to immediately save favorites:', err)
       }
-
-      // Immediately save to localStorage to ensure it persists
-      if (localStorageAvailable) {
-        try {
-          localStorage.setItem('karaokeFavorites', JSON.stringify(newFavorites))
-          console.log('Immediately saved favorites:', newFavorites)
-        } catch (err) {
-          console.error('Failed to immediately save favorites:', err)
-        }
-      }
-
-      return newFavorites
-    })
+    }
 
     // Update the current song in modal if it's open
     if (modal.isOpen && modal.song && modal.song.id === songId) {
       setModal({
         song: {
           ...modal.song,
-          favorite: !favorites[songId],
+          favorite: !isFavorited,
         },
         isOpen: true,
       })
+    }
+
+    // Update filtered songs list immediately based on current view
+    if (showOnlyFavorites) {
+      // If we're showing favorites only, directly apply the filter with new favorites state
+      const filtered = songs.filter((song) => {
+        // Use the new favorites state we just calculated
+        return songId === song.id ? !isFavorited : !!newFavorites[song.id]
+      })
+      setFilteredSongs(sortSongs(filtered))
+    } else if (query.trim() && query.trim().length >= 3) {
+      // If there's an active search query, reapply the search with our new favorites
+      const lowercaseQuery = query.toLowerCase()
+      const filtered = songs.filter(
+        (song) =>
+          song.title.toLowerCase().includes(lowercaseQuery) ||
+          song.artist.toLowerCase().includes(lowercaseQuery),
+      )
+      setFilteredSongs(sortSongs(filtered))
     }
   }
 
   return (
     <div className="text-center min-h-screen flex flex-col bg-[#282c34] text-white">
       {/* Fixed Header Section */}
-      <header className="sticky top-0 z-10 bg-[#282c34] pt-8 pb-4 px-4 shadow-md">
-        <div className="w-full max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-4">Song/Artist Search</h2>
+      <header className="sticky top-0 z-10 bg-[#282c34] pt-8 pb-4 sm:px-4 px-0 shadow-md">
+        <div className="w-full sm:max-w-md px-2">
+          <h1 className="sm:text-3xl text-2xl font-bold">
+            KJ Scallywag Karaoke
+          </h1>
+          <h2 className="sm:text-2xl text-xl font-bold mb-4">
+            Song/Artist Search
+          </h2>
 
           {isLoading && <p>Loading songs...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
@@ -374,11 +402,11 @@ function App() {
                 </div>
               </div>
 
-              {/* Results Table */}
-              <div className="mt-8 overflow-x-auto bg-white text-black rounded-lg shadow">
+              {/* Results Table - Full width on mobile */}
+              <div className="mt-8 overflow-x-auto bg-white text-black sm:rounded-lg shadow -mx-4 sm:mx-0 w-screen sm:w-auto">
                 {(query.trim().length < 3 && !showOnlyFavorites) ||
                 filteredSongs.length === 0 ? (
-                  <div className="p-8 text-center text-gray-700">
+                  <div className="sm:p-8 p-4 text-center text-gray-700">
                     <p className="mb-4">
                       For best results search portions of a song or artist, not
                       all entries are correctly spelled.
@@ -408,21 +436,21 @@ function App() {
                       <tr>
                         <th
                           scope="col"
-                          className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="sm:px-2 px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '10%' }}
                         >
                           Fav
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="sm:px-6 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '50%' }}
                         >
                           Song {sortBy === 'title' && '(sorted)'}
                         </th>
                         <th
                           scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="sm:px-6 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '40%' }}
                         >
                           Artist {sortBy === 'artist' && '(sorted)'}
@@ -443,7 +471,7 @@ function App() {
                             } cursor-pointer hover:bg-gray-100`}
                             onClick={() => handleOpenModal(song)}
                           >
-                            <td className="px-2 py-4 text-center">
+                            <td className="sm:px-2 px-1 py-4 text-center">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation() // Prevent opening modal
@@ -484,13 +512,13 @@ function App() {
                               </button>
                             </td>
                             <td
-                              className="px-6 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="sm:px-6 px-2 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
                               style={{ maxWidth: 0 }}
                             >
                               {song.title}
                             </td>
                             <td
-                              className="px-6 py-4 text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="sm:px-6 px-2 py-4 text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap"
                               style={{ maxWidth: 0 }}
                             >
                               {song.artist}
@@ -503,8 +531,9 @@ function App() {
 
                 {/* Pagination Controls - Only show when we have search results or showing favorites */}
                 {filteredSongs.length > 0 && (
-                  <div className="px-6 py-3 bg-gray-100 flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
+                  <div className="sm:px-6 px-3 py-3 bg-gray-100">
+                    {/* Results count - Now on its own row */}
+                    <div className="text-sm text-gray-500 pb-2 border-b border-gray-200 mb-2 text-center">
                       Showing{' '}
                       {Math.min(
                         resultsPerPage,
@@ -512,10 +541,26 @@ function App() {
                           (currentPage - 1) * resultsPerPage,
                       )}{' '}
                       of {filteredSongs.length}{' '}
-                      {showOnlyFavorites ? 'favorite' : ''} results
+                      {showOnlyFavorites ? (
+                        <span className="font-medium text-yellow-600">
+                          favorite
+                        </span>
+                      ) : (
+                        ''
+                      )}{' '}
+                      {query.trim() && query.trim().length >= 3 ? (
+                        <span>
+                          matching{' '}
+                          <span className="font-medium">"{query}"</span>
+                        </span>
+                      ) : (
+                        ''
+                      )}{' '}
+                      results
                     </div>
 
-                    <div className="flex space-x-2">
+                    {/* Pagination buttons in their own row */}
+                    <div className="flex justify-center space-x-2">
                       <button
                         onClick={() =>
                           setCurrentPage((prev) => Math.max(prev - 1, 1))
@@ -665,8 +710,8 @@ function App() {
       </header>
 
       {/* Content Area (scrollable) */}
-      <div className="flex-1 overflow-auto px-4 py-6">
-        <div className="w-full max-w-md mx-auto">
+      <div className="flex-1 overflow-auto py-6 sm:px-4 px-0">
+        <div className="w-full sm:max-w-md mx-auto">
           {!isLoading &&
             !error &&
             (filteredSongs.length > 0 ||
