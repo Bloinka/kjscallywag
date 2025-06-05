@@ -33,6 +33,11 @@ const isLocalStorageAvailable = () => {
 }
 
 function App() {
+  // Enable/disable pagination - controls whether results are shown in pages (true) or all at once (false)
+  // When set to false, all pagination UI and functionality is disabled
+  // This can be toggled by the user through a button in the interface
+  const [enablePagination, setEnablePagination] = useState(false)
+
   const [songs, setSongs] = useState<Array<Song>>([])
   const [filteredSongs, setFilteredSongs] = useState<Array<Song>>([])
   const [query, setQuery] = useState('')
@@ -48,6 +53,7 @@ function App() {
     isOpen: false,
   })
 
+  // Number of results per page - only used if pagination is enabled
   const resultsPerPage = 100
 
   // Load favorites from localStorage on component mount
@@ -165,8 +171,10 @@ function App() {
   // Filter songs based on query and favorites settings
   const handleSearch = (value: string) => {
     setQuery(value)
-    // Reset to first page when search query changes
-    setCurrentPage(1)
+    // Reset to first page when search query changes, but only if pagination is enabled
+    if (enablePagination) {
+      setCurrentPage(1)
+    }
 
     let filtered = [...songs]
 
@@ -203,7 +211,11 @@ function App() {
     // Toggle the state and trigger search filter
     const newShowOnlyFavorites = !showOnlyFavorites
     setShowOnlyFavorites(newShowOnlyFavorites)
-    setCurrentPage(1) // Reset to first page
+
+    // Reset to first page, but only if pagination is enabled
+    if (enablePagination) {
+      setCurrentPage(1)
+    }
 
     // If we're switching to show favorites and have no query text,
     // we need to make sure favorites are displayed regardless of search text
@@ -294,10 +306,10 @@ function App() {
   }
 
   return (
-    <div className="text-center min-h-screen flex flex-col bg-[#282c34] text-white">
-      {/* Fixed Header Section */}
-      <header className="sticky top-0 z-10 bg-[#282c34] pt-8 pb-4 sm:px-4 px-0 shadow-md">
-        <div className="w-full sm:max-w-md px-2">
+    <div className="text-center min-h-screen flex flex-col bg-[#530000] text-white max-w-[100vw] overflow-hidden">
+      {/* Fixed Header Section - No side margins on mobile */}
+      <header className="sticky top-0 z-10 bg- pt-8 pb-4 sm:px-4 px-0 shadow-md w-full">
+        <div className="w-full sm:max-w-md mx-auto px-0">
           <h1 className="sm:text-3xl text-2xl font-bold">
             KJ Scallywag Karaoke
           </h1>
@@ -310,7 +322,7 @@ function App() {
 
           {!isLoading && !error && (
             <>
-              <div className="relative mt-1">
+              <div className="relative mt-1 px-4 ">
                 <input
                   className="w-full py-2 px-3 text-lg text-black bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#61dafb] pr-10"
                   placeholder="Search for a song or artist..."
@@ -323,7 +335,7 @@ function App() {
                 />
                 {query && (
                   <button
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                    className="absolute inset-y-0 right-0 pr-6 flex items-center text-gray-500 hover:text-gray-700"
                     onClick={() => handleSearch('')}
                     aria-label="Clear search"
                   >
@@ -344,9 +356,51 @@ function App() {
               </div>
 
               {/* Controls Bar - Favorites Filter and Sort */}
-              <div className="flex justify-between mt-4">
-                {/* Favorites Filter Button - Only show if there are favorites */}
-                <div>
+              <div className="flex justify-between mt-4 px-4 sm:px-0">
+                {/* Filter controls */}
+                <div className="flex space-x-2">
+                  {/* Pagination Toggle */}
+                  {/* <button
+                    type="button"
+                    onClick={() => setEnablePagination((prev) => !prev)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center ${
+                      enablePagination
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-300 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    aria-label={
+                      enablePagination
+                        ? 'Disable pagination'
+                        : 'Enable pagination'
+                    }
+                    title={
+                      enablePagination
+                        ? 'Currently showing results in pages of 100 items'
+                        : 'Currently showing all results at once'
+                    }
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d={
+                          enablePagination
+                            ? 'M4 6h16M4 12h16m-7 6h7'
+                            : 'M4 6h16M4 12h16M4 18h16'
+                        }
+                      />
+                    </svg>
+                    {enablePagination ? 'Pages: On' : 'Pages: Off'}
+                  </button> */}
+
+                  {/* Favorites Filter Button - Only show if there are favorites */}
                   {Object.keys(favorites).length > 0 && (
                     <button
                       type="button"
@@ -403,7 +457,7 @@ function App() {
               </div>
 
               {/* Results Table - Full width on mobile */}
-              <div className="mt-8 overflow-x-auto bg-white text-black sm:rounded-lg shadow -mx-4 sm:mx-0 w-screen sm:w-auto">
+              <div className="mt-8 overflow-x-auto bg-white text-black sm:rounded-lg shadow w-screen sm:w-auto sm:mx-0">
                 {(query.trim().length < 3 && !showOnlyFavorites) ||
                 filteredSongs.length === 0 ? (
                   <div className="sm:p-8 p-4 text-center text-gray-700">
@@ -425,7 +479,11 @@ function App() {
                 ) : (
                   <table
                     className="w-full divide-y divide-gray-200"
-                    style={{ tableLayout: 'fixed' }}
+                    style={{
+                      tableLayout: 'fixed',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
                   >
                     <colgroup>
                       <col width="10%" /> {/* Favorite column */}
@@ -439,14 +497,14 @@ function App() {
                           className="sm:px-2 px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '10%' }}
                         >
-                          Fav
+                          Fave
                         </th>
                         <th
                           scope="col"
                           className="sm:px-6 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '50%' }}
                         >
-                          Song {sortBy === 'title' && '(sorted)'}
+                          Song Title{sortBy === 'title' && '(sorted)'}
                         </th>
                         <th
                           scope="col"
@@ -458,80 +516,94 @@ function App() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredSongs
-                        .slice(
-                          (currentPage - 1) * resultsPerPage,
-                          currentPage * resultsPerPage,
-                        )
-                        .map((song, index) => (
-                          <tr
-                            key={index}
-                            className={`${
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                            } cursor-pointer hover:bg-gray-100`}
-                            onClick={() => handleOpenModal(song)}
+                      {(enablePagination
+                        ? filteredSongs.slice(
+                            (currentPage - 1) * resultsPerPage,
+                            currentPage * resultsPerPage,
+                          )
+                        : filteredSongs
+                      ).map((song, index) => (
+                        <tr
+                          key={index}
+                          className={`${
+                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          } cursor-pointer hover:bg-gray-100`}
+                          onClick={() => handleOpenModal(song)}
+                        >
+                          <td
+                            className="sm:px-2 px-1 py-4 text-center"
+                            style={{ width: '10%' }}
                           >
-                            <td className="sm:px-2 px-1 py-4 text-center">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation() // Prevent opening modal
-                                  toggleFavorite(song.id)
-                                }}
-                                className="focus:outline-none"
-                                aria-label={
-                                  favorites[song.id]
-                                    ? 'Remove from favorites'
-                                    : 'Add to favorites'
-                                }
-                              >
-                                {favorites[song.id] ? (
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-yellow-500"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                  >
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                  </svg>
-                                ) : (
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5 text-gray-400 hover:text-yellow-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                                    />
-                                  </svg>
-                                )}
-                              </button>
-                            </td>
-                            <td
-                              className="sm:px-6 px-2 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
-                              style={{ maxWidth: 0 }}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent opening modal
+                                toggleFavorite(song.id)
+                              }}
+                              className="focus:outline-none"
+                              aria-label={
+                                favorites[song.id]
+                                  ? 'Remove from favorites'
+                                  : 'Add to favorites'
+                              }
                             >
-                              {song.title}
-                            </td>
-                            <td
-                              className="sm:px-6 px-2 py-4 text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap"
-                              style={{ maxWidth: 0 }}
-                            >
-                              {song.artist}
-                            </td>
-                          </tr>
-                        ))}
+                              {favorites[song.id] ? (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-yellow-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-gray-400 hover:text-yellow-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                          <td
+                            className="sm:px-6 px-2 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
+                            style={{ maxWidth: 0, width: '50%' }}
+                          >
+                            {song.title}
+                          </td>
+                          <td
+                            className="sm:px-6 px-2 py-4 text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap"
+                            style={{ maxWidth: 0, width: '40%' }}
+                          >
+                            {song.artist}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 )}
 
-                {/* Pagination Controls - Only show when we have search results or showing favorites */}
-                {filteredSongs.length > 0 && (
-                  <div className="sm:px-6 px-3 py-3 bg-gray-100">
+                {/* Information message for when pagination is disabled */}
+                {!enablePagination && filteredSongs.length > 100 && (
+                  <div className="px-4 py-2 bg-blue-50 text-blue-700 text-center text-sm">
+                    <p>
+                      Showing all {filteredSongs.length} results. Enable
+                      pagination for better performance.
+                    </p>
+                  </div>
+                )}
+
+                {/* Pagination Controls - Only show when pagination is enabled, and we have search results or showing favorites */}
+                {enablePagination && filteredSongs.length > 0 && (
+                  <div className="sm:px-6 px-4 py-3 bg-gray-100 w-full">
                     {/* Results count - Now on its own row */}
                     <div className="text-sm text-gray-500 pb-2 border-b border-gray-200 mb-2 text-center">
                       Showing{' '}
@@ -710,7 +782,7 @@ function App() {
       </header>
 
       {/* Content Area (scrollable) */}
-      <div className="flex-1 overflow-auto py-6 sm:px-4 px-0">
+      <div className="flex-1 overflow-auto py-6 sm:px-4 px-0 w-full">
         <div className="w-full sm:max-w-md mx-auto">
           {!isLoading &&
             !error &&
