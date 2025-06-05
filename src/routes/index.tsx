@@ -18,7 +18,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortBy] = useState<'artist' | 'title'>('title')
+  const [sortBy, setSortBy] = useState<'artist' | 'title'>('artist')
 
   const resultsPerPage = 100
 
@@ -51,7 +51,14 @@ function App() {
           return { title, artist }
         })
 
-        setSongs(parsedSongs)
+        // Sort the songs by artist initially
+        const sortedSongs = [...parsedSongs].sort((a, b) => {
+          return (
+            a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title)
+          )
+        })
+
+        setSongs(sortedSongs)
         setFilteredSongs([]) // Start with empty results until search
         setIsLoading(false)
       } catch (err) {
@@ -98,10 +105,10 @@ function App() {
   }
 
   // Handle sort change
-  // const handleSortChange = (newSortBy: 'artist' | 'title') => {
-  //   setSortBy(newSortBy)
-  //   setFilteredSongs(sortSongs(filteredSongs))
-  // }
+  const handleSortChange = (newSortBy: 'artist' | 'title') => {
+    setSortBy(newSortBy)
+    setFilteredSongs(sortSongs(filteredSongs))
+  }
 
   return (
     <div className="text-center">
@@ -149,7 +156,7 @@ function App() {
               </div>
 
               {/* Sort Controls */}
-              {/* <div className="flex justify-end mt-4">
+              <div className="flex justify-end mt-4">
                 <div className="inline-flex rounded-md shadow-sm" role="group">
                   <button
                     type="button"
@@ -174,7 +181,7 @@ function App() {
                     Sort by Artist
                   </button>
                 </div>
-              </div>  */}
+              </div>
 
               {/* Results Table */}
               <div className="mt-8 overflow-x-auto bg-white text-black rounded-lg shadow">
@@ -205,14 +212,14 @@ function App() {
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '60%' }}
                         >
-                          Song
+                          Song {sortBy === 'title' && '(sorted)'}
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           style={{ width: '40%' }}
                         >
-                          Artist
+                          Artist {sortBy === 'artist' && '(sorted)'}
                         </th>
                       </tr>
                     </thead>
