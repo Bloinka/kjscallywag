@@ -3,13 +3,34 @@ import { useEffect, useState } from 'react'
 
 // Define the Song type
 type Song = {
+  id: string // Unique identifier (title + artist)
   title: string
   artist: string
+  favorite?: boolean
+}
+
+// Define the modal content type
+type ModalContent = {
+  song: Song | null
+  isOpen: boolean
 }
 
 export const Route = createFileRoute('/')({
   component: App,
 })
+
+// Check if localStorage is available
+const isLocalStorageAvailable = () => {
+  try {
+    const testKey = '__test__'
+    localStorage.setItem(testKey, testKey)
+    localStorage.removeItem(testKey)
+    return true
+  } catch (e) {
+    console.error('localStorage is not available:', e)
+    return false
+  }
+}
 
 function App() {
   const [songs, setSongs] = useState<Array<Song>>([])
@@ -19,8 +40,52 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'artist' | 'title'>('artist')
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({})
+  const [localStorageAvailable] = useState<boolean>(isLocalStorageAvailable())
+  const [modal, setModal] = useState<ModalContent>({
+    song: null,
+    isOpen: false,
+  })
 
   const resultsPerPage = 100
+
+  // Load favorites from localStorage on component mount
+  useEffect(() => {
+    if (!localStorageAvailable) {
+      console.warn('localStorage is not available, favorites will not persist')
+      return
+    }
+
+    try {
+      const savedFavorites = localStorage.getItem('karaokeFavorites')
+      console.log('Loading favorites from localStorage:', savedFavorites)
+      if (savedFavorites) {
+        const parsedFavorites = JSON.parse(savedFavorites)
+        console.log('Parsed favorites:', parsedFavorites)
+        setFavorites(parsedFavorites)
+      }
+    } catch (err) {
+      console.error('Failed to load favorites from localStorage:', err)
+    }
+  }, [localStorageAvailable])
+
+  // Save favorites to localStorage whenever they change
+  useEffect(() => {
+    if (!localStorageAvailable || Object.keys(favorites).length === 0) {
+      return
+    }
+
+    try {
+      console.log('Saving favorites to localStorage:', favorites)
+      localStorage.setItem('karaokeFavorites', JSON.stringify(favorites))
+      // Verify the save worked by reading it back
+      const savedValue = localStorage.getItem('karaokeFavorites')
+      console.log('Verified saved value:', savedValue)
+    } catch (err) {
+      console.error('Failed to save favorites to localStorage:', err)
+    }
+  }, [favorites, localStorageAvailable])
 
   // Fetch the song list on component mount
   useEffect(() => {
@@ -48,7 +113,15 @@ function App() {
           const artist = parts[1]
             ? parts[1].replace(/^"(.*)"$/, '$1').trim()
             : 'Unknown Artist'
-          return { title, artist }
+
+          // Create a unique ID for the song
+          const id = `${title}___${artist}`.toLowerCase().replace(/\s+/g, '_')
+
+          return {
+            id,
+            title,
+            artist,
+          }
         })
 
         // Sort the songs by artist initially
@@ -83,25 +156,45 @@ function App() {
     })
   }
 
-  // Filter songs based on query
+  // Filter songs based on query and favorites settings
   const handleSearch = (value: string) => {
     setQuery(value)
     // Reset to first page when search query changes
     setCurrentPage(1)
 
-    // If empty query or less than 3 characters, don't show any results
-    if (!value.trim() || value.trim().length < 3) {
+    // If empty query or less than 3 characters, and not showing favorites only, don't show any results
+    if ((!value.trim() || value.trim().length < 3) && !showOnlyFavorites) {
       setFilteredSongs([])
       return
     }
 
-    const lowercaseQuery = value.toLowerCase()
-    const filtered = songs.filter(
-      (song) =>
-        song.title.toLowerCase().includes(lowercaseQuery) ||
-        song.artist.toLowerCase().includes(lowercaseQuery),
-    )
+    let filtered = [...songs]
+
+    // Apply text search filter if query is long enough
+    if (value.trim() && value.trim().length >= 3) {
+      const lowercaseQuery = value.toLowerCase()
+      filtered = filtered.filter(
+        (song) =>
+          song.title.toLowerCase().includes(lowercaseQuery) ||
+          song.artist.toLowerCase().includes(lowercaseQuery),
+      )
+    }
+
+    // Apply favorites filter if enabled
+    if (showOnlyFavorites) {
+      filtered = filtered.filter((song) => favorites[song.id])
+    }
+
     setFilteredSongs(sortSongs(filtered))
+  }
+
+  // Toggle favorites filter
+  const toggleFavoritesFilter = () => {
+    setShowOnlyFavorites(!showOnlyFavorites)
+    setCurrentPage(1) // Reset to first page
+
+    // Re-apply the search with the new favorites setting
+    handleSearch(query)
   }
 
   // Handle sort change
@@ -110,11 +203,59 @@ function App() {
     setFilteredSongs(sortSongs(filteredSongs))
   }
 
+  // Open song detail modal
+  const handleOpenModal = (song: Song) => {
+    setModal({ song, isOpen: true })
+  }
+
+  // Close song detail modal
+  const handleCloseModal = () => {
+    setModal({ song: null, isOpen: false })
+  }
+
+  // Toggle favorite status for a song
+  const toggleFavorite = (songId: string) => {
+    setFavorites((prev) => {
+      const newFavorites = { ...prev }
+
+      if (newFavorites[songId]) {
+        // Remove favorite
+        delete newFavorites[songId]
+      } else {
+        // Add favorite
+        newFavorites[songId] = true
+      }
+
+      // Immediately save to localStorage to ensure it persists
+      if (localStorageAvailable) {
+        try {
+          localStorage.setItem('karaokeFavorites', JSON.stringify(newFavorites))
+          console.log('Immediately saved favorites:', newFavorites)
+        } catch (err) {
+          console.error('Failed to immediately save favorites:', err)
+        }
+      }
+
+      return newFavorites
+    })
+
+    // Update the current song in modal if it's open
+    if (modal.isOpen && modal.song && modal.song.id === songId) {
+      setModal({
+        song: {
+          ...modal.song,
+          favorite: !favorites[songId],
+        },
+        isOpen: true,
+      })
+    }
+  }
+
   return (
-    <div className="text-center">
-      <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
-        {/* Song Search Section */}
-        <div className="w-full max-w-md mx-auto mt-8 mb-8">
+    <div className="text-center min-h-screen flex flex-col bg-[#282c34] text-white">
+      {/* Fixed Header Section */}
+      <header className="sticky top-0 z-10 bg-[#282c34] pt-8 pb-4 px-4 shadow-md">
+        <div className="w-full max-w-md mx-auto">
           <h2 className="text-2xl font-bold mb-4">Song/Artist Search</h2>
 
           {isLoading && <p>Loading songs...</p>}
@@ -155,8 +296,39 @@ function App() {
                 )}
               </div>
 
-              {/* Sort Controls */}
-              <div className="flex justify-end mt-4">
+              {/* Controls Bar - Favorites Filter and Sort */}
+              <div className="flex justify-between mt-4">
+                {/* Favorites Filter Button - Only show if there are favorites */}
+                <div>
+                  {Object.keys(favorites).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleFavoritesFilter}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center ${
+                        showOnlyFavorites
+                          ? 'bg-yellow-400 text-gray-900'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                      aria-label={
+                        showOnlyFavorites
+                          ? 'Show all songs'
+                          : 'Show only favorites'
+                      }
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`h-5 w-5 mr-1 ${showOnlyFavorites ? 'text-gray-900' : 'text-yellow-500'}`}
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      {showOnlyFavorites ? 'Show All' : 'Favorites Only'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort Controls */}
                 <div className="inline-flex rounded-md shadow-sm" role="group">
                   <button
                     type="button"
@@ -185,7 +357,7 @@ function App() {
 
               {/* Results Table */}
               <div className="mt-8 overflow-x-auto bg-white text-black rounded-lg shadow">
-                {query.trim().length < 3 ? (
+                {query.trim().length < 3 && !showOnlyFavorites ? (
                   <div className="p-8 text-center text-gray-700">
                     <p className="mb-4">
                       For best results search portions of a song or artist, not
@@ -202,15 +374,23 @@ function App() {
                     style={{ tableLayout: 'fixed' }}
                   >
                     <colgroup>
-                      <col width="60%" />
-                      <col width="40%" />
+                      <col width="10%" /> {/* Favorite column */}
+                      <col width="50%" /> {/* Song title column */}
+                      <col width="40%" /> {/* Artist column */}
                     </colgroup>
                     <thead className="bg-gray-100">
                       <tr>
                         <th
                           scope="col"
+                          className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          style={{ width: '10%' }}
+                        >
+                          Fav
+                        </th>
+                        <th
+                          scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          style={{ width: '60%' }}
+                          style={{ width: '50%' }}
                         >
                           Song {sortBy === 'title' && '(sorted)'}
                         </th>
@@ -232,10 +412,51 @@ function App() {
                         .map((song, index) => (
                           <tr
                             key={index}
-                            className={
+                            className={`${
                               index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                            }
+                            } cursor-pointer hover:bg-gray-100`}
+                            onClick={() => handleOpenModal(song)}
                           >
+                            <td className="px-2 py-4 text-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation() // Prevent opening modal
+                                  toggleFavorite(song.id)
+                                }}
+                                className="focus:outline-none"
+                                aria-label={
+                                  favorites[song.id]
+                                    ? 'Remove from favorites'
+                                    : 'Add to favorites'
+                                }
+                              >
+                                {favorites[song.id] ? (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-yellow-500"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-400 hover:text-yellow-500"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            </td>
                             <td
                               className="px-6 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
                               style={{ maxWidth: 0 }}
@@ -255,71 +476,183 @@ function App() {
                 )}
 
                 {/* Pagination Controls - Only show when we have search results */}
-                {query.trim().length >= 3 && filteredSongs.length > 0 && (
-                  <div className="px-6 py-3 bg-gray-100 flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                      Showing{' '}
-                      {Math.min(
-                        resultsPerPage,
-                        filteredSongs.length -
-                          (currentPage - 1) * resultsPerPage,
-                      )}{' '}
-                      of {filteredSongs.length} results
+                {(query.trim().length >= 3 || showOnlyFavorites) &&
+                  filteredSongs.length > 0 && (
+                    <div className="px-6 py-3 bg-gray-100 flex items-center justify-between">
+                      <div className="text-sm text-gray-500">
+                        Showing{' '}
+                        {Math.min(
+                          resultsPerPage,
+                          filteredSongs.length -
+                            (currentPage - 1) * resultsPerPage,
+                        )}{' '}
+                        of {filteredSongs.length} results
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                          }
+                          disabled={currentPage === 1}
+                          className={`px-3 py-1 rounded ${
+                            currentPage === 1
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
+                          }`}
+                        >
+                          Previous
+                        </button>
+
+                        <span className="px-3 py-1 text-sm">
+                          Page {currentPage} of{' '}
+                          {Math.max(
+                            1,
+                            Math.ceil(filteredSongs.length / resultsPerPage),
+                          )}
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(
+                                prev + 1,
+                                Math.ceil(
+                                  filteredSongs.length / resultsPerPage,
+                                ),
+                              ),
+                            )
+                          }
+                          disabled={
+                            currentPage >=
+                            Math.ceil(filteredSongs.length / resultsPerPage)
+                          }
+                          className={`px-3 py-1 rounded ${
+                            currentPage >=
+                            Math.ceil(filteredSongs.length / resultsPerPage)
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              {/* Song Detail Modal */}
+              {modal.isOpen && modal.song && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Song Details
+                      </h3>
+                      <button
+                        onClick={handleCloseModal}
+                        className="text-gray-400 hover:text-gray-500"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
                     </div>
 
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
-                        disabled={currentPage === 1}
-                        className={`px-3 py-1 rounded ${
-                          currentPage === 1
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
-                        }`}
-                      >
-                        Previous
-                      </button>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Title
+                      </label>
+                      <p className="text-lg font-bold break-words text-black">
+                        {modal.song.title}
+                      </p>
+                    </div>
 
-                      <span className="px-3 py-1 text-sm">
-                        Page {currentPage} of{' '}
-                        {Math.max(
-                          1,
-                          Math.ceil(filteredSongs.length / resultsPerPage),
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Artist
+                      </label>
+                      <p className="text-lg break-words text-black">
+                        {modal.song.artist}
+                      </p>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <button
+                        onClick={() => toggleFavorite(modal.song!.id)}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        {favorites[modal.song.id] ? (
+                          <>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5 mr-2 text-yellow-300"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            Remove from Favorites
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5 mr-2 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                              />
+                            </svg>
+                            Add to Favorites
+                          </>
                         )}
-                      </span>
-
+                      </button>
                       <button
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(
-                              prev + 1,
-                              Math.ceil(filteredSongs.length / resultsPerPage),
-                            ),
-                          )
-                        }
-                        disabled={
-                          currentPage >=
-                          Math.ceil(filteredSongs.length / resultsPerPage)
-                        }
-                        className={`px-3 py-1 rounded ${
-                          currentPage >=
-                          Math.ceil(filteredSongs.length / resultsPerPage)
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-[#61dafb] text-black hover:bg-[#43b9da]'
-                        }`}
+                        onClick={handleCloseModal}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
                       >
-                        Next
+                        Close
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
       </header>
+
+      {/* Content Area (scrollable) */}
+      <div className="flex-1 overflow-auto px-4 py-6">
+        <div className="w-full max-w-md mx-auto">
+          {!isLoading &&
+            !error &&
+            (filteredSongs.length > 0 ||
+              (query.trim().length < 3 && !showOnlyFavorites)) && (
+              <div className="mt-4">
+                {/* Results already displayed in header section */}
+              </div>
+            )}
+        </div>
+      </div>
     </div>
   )
 }
