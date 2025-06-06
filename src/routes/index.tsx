@@ -313,9 +313,7 @@ function App() {
           <h1 className="sm:text-3xl text-2xl font-bold">
             KJ Scallywag Karaoke
           </h1>
-          <h2 className="sm:text-2xl text-xl font-bold mb-4">
-            Song/Artist Search
-          </h2>
+          <h2 className="sm:text-2xl text-xl font-bold mb-4">Song Search</h2>
 
           {isLoading && <p>Loading songs...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
