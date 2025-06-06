@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/in')({
   component: Launch,
@@ -60,17 +60,6 @@ const isInAppBrowser = () => {
 
 function Launch() {
   const navigate = useNavigate()
-  const [canSave] = useState(() => {
-    try {
-      localStorage.setItem('test', 'value')
-      localStorage.getItem('test') // Retrieve to verify it's saved
-      localStorage.removeItem('test') // Clean up after testing
-      return true
-    } catch (e) {
-      console.error('LocalStorage not available:', e)
-      return false
-    }
-  })
 
   // Get current URL to create launch link
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
