@@ -148,24 +148,19 @@ function Launch() {
   // Render content for any iOS device or in-app browser
   return (
     <div className="text-center">
-      <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
+      <header className="min-h-screen flex flex-col items-center justify-center bg-[#520000] text-white text-[calc(10px+2vmin)]">
         {isIOSDevice ? (
           <>
             <h2 className="text-2xl mb-4">iOS In-App Browser Detected</h2>
             <p className="mb-4">
-              For the best experience, please open this site in Safari. We've
-              provided multiple methods below - try each one until you find one
-              that works.
-            </p>
-            <p className="mb-8 text-sm text-yellow-300">
-              <strong>Tip:</strong> If you're using the iOS QR Code scanner, try
-              holding your finger on the QR code until a menu appears, then
-              choose "Open in Safari" directly.
+              For the best experience, please open this site in Safari. If you
+              used your Camera app to scan you can click on the button below, if
+              you used the ios QR Scanner then you should click on the icon in
+              the lower right corner of the screen to open the site in Safari.
             </p>
           </>
         ) : (
           <>
-            <h2 className="text-2xl mb-4">You're using an in-app browser</h2>
             <p className="mb-8">
               For the best experience, we recommend using your device's default
               browser
@@ -175,47 +170,23 @@ function Launch() {
 
         {isIOSDevice ? (
           <>
-            <div>{JSON.stringify(canSave)}greg</div>
-            {/* For iOS, we offer multiple buttons with different approaches */}
-            <button
-              onClick={() =>
-                window.open('https://kjscallywag.netlify.app', '_blank')
-              }
-              className="px-6 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
-            >
-              Method 1: Open in Browser
-            </button>
-            <button
-              onClick={() =>
-                window.open('https://kjscallywag.netlify.app', '_system')
-              }
-              className="px-6 py-3 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition mb-4"
-            >
-              Method 2: Open in Safari
-            </button>
-            <button
-              onClick={launchInDefaultBrowser}
-              className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition mb-4"
-            >
-              Method 3: Force Safari Open
-            </button>
+            <div>KJ Scallywag Karaoke Song List.</div>
             <a
               href="https://kjscallywag.netlify.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition inline-block"
+              className="px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-black-600 transition inline-block"
             >
-              Method 4: Try Direct Link
+              Launch App
             </a>
           </>
         ) : (
           <>
-            <div>{JSON.stringify(canSave)}greg</div>
             <button
               onClick={launchInDefaultBrowser}
-              className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition"
+              className="px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-black-600 transition"
             >
-              Launch in Default Browser
+              Launch App
             </button>
           </>
         )}
