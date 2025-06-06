@@ -572,14 +572,14 @@ function App() {
                             </button>
                           </td>
                           <td
-                            className="sm:px-6 px-2 py-4 text-sm font-medium text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap"
-                            style={{ maxWidth: 0, width: '50%' }}
+                            className="sm:px-6 px-2 py-4 text-base font-medium text-gray-900 overflow-hidden break-words"
+                            style={{ width: '50%' }}
                           >
                             {song.title}
                           </td>
                           <td
-                            className="sm:px-6 px-2 py-4 text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap"
-                            style={{ maxWidth: 0, width: '40%' }}
+                            className="sm:px-6 px-2 py-4 text-base text-gray-500 overflow-hidden break-words"
+                            style={{ width: '40%' }}
                           >
                             {song.artist}
                           </td>

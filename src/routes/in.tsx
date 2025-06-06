@@ -72,21 +72,6 @@ function Launch() {
       : ''
   const isIOSDevice = /(iphone|ipod|ipad)/i.test(userAgent)
 
-  // Add a special meta tag approach for iOS to force out of in-app browsers
-  useEffect(() => {
-    if (isIOSDevice) {
-      // Create a meta tag to attempt forcing Safari to open
-      const metaTag = document.createElement('meta')
-      metaTag.name = 'apple-itunes-app'
-      metaTag.content =
-        'app-id=305343404, app-argument=https://kjscallywag.netlify.app'
-      document.head.appendChild(metaTag)
-
-      // Log user agent for debugging
-      console.log('iOS device detected with user agent:', userAgent)
-    }
-  }, [isIOSDevice, userAgent])
-
   useEffect(() => {
     // Only redirect non-iOS devices that aren't in in-app browsers
     const checkBrowser = () => {
@@ -115,7 +100,7 @@ function Launch() {
   // Enhanced function to try multiple methods to open in default browser
   const launchInDefaultBrowser = () => {
     // The absolute URL we want to open (not the current URL which may be the in-app version)
-    const targetUrl = 'https://kjscallywag.netlify.app'
+    const targetUrl = 'https://scallywag.forgottencoast.live'
 
     if (isIOSDevice) {
       // For iOS, we need to try multiple approaches
@@ -160,7 +145,7 @@ function Launch() {
         {isIOSDevice ? (
           <>
             <a
-              href="https://kjscallywag.netlify.app"
+              href="https://scallywag.forgottencoast.live"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-black-600 transition inline-block"
