@@ -140,11 +140,11 @@ function Launch() {
       <header className="min-h-screen flex flex-col items-center justify-center bg-[#520000] text-white text-[calc(10px+2vmin)]">
         {isIOSDevice ? (
           <>
-            <h2 className="text-2xl mb-4">iOS In-App Browser Detected</h2>
-            <p className="mb-4">
+            <h2 className="text-2xl mb-4">KJ Scallywag Karaoke Song List.</h2>
+            <p className="m-4">
               For the best experience, please open this site in Safari. If you
               used your Camera app to scan you can click on the button below, if
-              you used the ios QR Scanner then you should click on the icon in
+              you used the iOS QR Scanner then you should click on the icon in
               the lower right corner of the screen to open the site in Safari.
             </p>
           </>
@@ -159,7 +159,6 @@ function Launch() {
 
         {isIOSDevice ? (
           <>
-            <div>KJ Scallywag Karaoke Song List.</div>
             <a
               href="https://kjscallywag.netlify.app"
               target="_blank"
